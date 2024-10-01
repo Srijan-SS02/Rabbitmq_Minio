@@ -1,0 +1,87 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:2.21.2
+    container_name: portainer
+    restart: always
+    env_file:
+    - .env
+    ports:
+      - 8000:8000
+      - 9443:9443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is not set}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is not set}
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq  # Persist RabbitMQ data
+  
+  rabbitmq_setup:
+    image: alpine
+    restart: no
+    depends_on:
+    - rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is not set}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is not set}
+      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:?RABBITMQ_EXCHANGE_NAME is not set}
+      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:?RABBITMQ_QUEUE_NAME is not set}
+      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:?RABBITMQ_ROUTING_KEY is not set}
+    volumes:
+      - './rabbitmq/rabbitmq_setup.sh:/etc/rabbitmq/rabbitmq_setup.sh' 
+    command: ["/bin/sh", "-c", "sleep 10 && /etc/rabbitmq/rabbitmq_setup.sh"]
+
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    restart: always
+    depends_on:
+    - rabbitmq
+    - rabbitmq_setup
+    command: server --console-address ":9001" /data
+    ports:
+      - 9000:9000  #API port/console
+      - 9001:9001  #WEB UI
+    volumes:
+      - minio:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is not set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is not set}
+  
+  minio_helper:
+    image: minio/mc
+    volumes:
+      - './minio/kickstart.sh:/etc/minio/kickstart.sh'
+    entrypoint: /bin/sh -c "sleep 20 && /etc/minio/kickstart.sh"
+    depends_on:
+      - minio
+    environment:
+      MINIO_HOST: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672
+      AMQP_EXCHANGE: ${RABBITMQ_EXCHANGE_NAME}
+      AMQP_EXCHANGE_TYPE: direct
+      AMQP_ROUTING_KEY: ${RABBITMQ_QUEUE_NAME}
+      AMQP_MANDATORY: true
+      AMQP_DURABLE: true
+      AMQP_NO_WAIT: false
+      AMQP_INTERNAL: false
+      AMQP_AUTO_DELETED: false
+      AMQP_DELIVERY_MODE: 2
+
+volumes:
+  portainer:
+  minio:
+  rabbitmq:
