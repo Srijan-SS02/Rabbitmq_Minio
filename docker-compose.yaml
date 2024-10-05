@@ -27,6 +27,7 @@ services:
   
   rabbitmq_setup:
     image: alpine
+    container_name: rabbitmq_setup
     restart: no
     depends_on:
     - rabbitmq
@@ -60,6 +61,7 @@ services:
   
   minio_helper:
     image: minio/mc
+    container_name: minio_helper
     volumes:
       - './minio/kickstart.sh:/etc/minio/kickstart.sh'
     entrypoint: /bin/sh -c "sleep 20 && /etc/minio/kickstart.sh"
