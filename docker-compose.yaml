@@ -28,7 +28,7 @@ services:
   rabbitmq_setup:
     image: alpine
     container_name: rabbitmq_setup
-    restart: no
+    restart: always
     depends_on:
     - rabbitmq
     environment:
