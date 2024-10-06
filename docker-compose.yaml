@@ -76,8 +76,8 @@ services:
       AMQP_EXCHANGE: ${RABBITMQ_EXCHANGE_NAME}
       AMQP_EXCHANGE_TYPE: direct
       AMQP_ROUTING_KEY: ${RABBITMQ_QUEUE_NAME}
-      AMQP_MANDATORY: true
-      AMQP_DURABLE: true
+      AMQP_MANDATORY: false
+      AMQP_DURABLE: false
       AMQP_NO_WAIT: false
       AMQP_INTERNAL: false
       AMQP_AUTO_DELETED: false
